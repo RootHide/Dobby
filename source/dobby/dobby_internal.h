@@ -11,3 +11,13 @@
 #include "MemoryAllocator/AssemblyCodeBuilder.h"
 
 #include "InterceptRouting/InterceptRouting.h"
+
+// #include <sys/syslog.h>
+// #define SYSLOG(...)                                                                                                    \
+//   {                                                                                                                    \
+//     openlog("roothide", LOG_PID, LOG_AUTH);                                                                            \
+//     syslog(LOG_DEBUG, __VA_ARGS__);                                                                                    \
+//     closelog();                                                                                                        \
+//   }
+
+#define SYSLOG(...)

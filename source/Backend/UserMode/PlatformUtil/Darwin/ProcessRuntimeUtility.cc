@@ -73,6 +73,11 @@ const tinystl::vector<MemRegion> &ProcessRuntimeUtility::GetProcessMemoryLayout(
 #if 0
       DEBUG_LOG("%p --- %p", addr, addr + size);
 #endif
+
+      SYSLOG("AutoPatches: kNoAccess %p %x, %d %d %d %d %d %d", (void *)addr, size, region_submap_info.user_tag,
+             region_submap_info.max_protection, region_submap_info.inheritance, region_submap_info.share_mode,
+             region_submap_info.pages_reusable, region_submap_info.ref_count);
+
       MemRegion region = MemRegion(addr, size, permission);
       regions.push_back(region);
       addr += size;

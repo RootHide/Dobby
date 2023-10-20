@@ -1,30 +1,30 @@
 if(__BUILD_ENVIRONMENT_CHECK)
   return()
 endif()
+
 set(__BUILD_ENVIRONMENT_CHECK TRUE)
 
 message(STATUS "")
 message(STATUS "********* build environment check ***********")
 
-
 # The Compiler ID
-if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang")
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang")
   set(COMPILER.Clang 1)
-elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
   set(COMPILER.Gcc 1)
-elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
-elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
+elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
   set(COMPILER.MSVC 1)
 else()
-  message (FATAL_ERROR "Compiler ${CMAKE_CXX_COMPILER_ID} not configured")
+  message(FATAL_ERROR "Compiler ${CMAKE_CXX_COMPILER_ID} not configured")
 endif()
+
 message(STATUS "\tCompiler: \t ${CMAKE_CXX_COMPILER_ID}")
 
 if(MSVC)
   string(TOLOWER ${MSVC_CXX_ARCHITECTURE_ID} CMAKE_SYSTEM_PROCESSOR)
   set(CMAKE_SYSTEM_PROCESSOR ${MSVC_CXX_ARCHITECTURE_ID})
 endif()
-
 
 if(BUILDING_SILICON)
   set(CMAKE_SYSTEM_PROCESSOR ${CMAKE_OSX_ARCHITECTURES})
@@ -50,8 +50,9 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(powerpc|ppc)64")
   message(STATUS "NOT SUPPORT ${CMAKE_SYSTEM_PROCESSOR}")
   set(PROCESSOR.PPC64 1)
 else()
-  message (FATAL_ERROR "Processor ${CMAKE_SYSTEM_PROCESSOR} not configured")
+  message(FATAL_ERROR "Processor ${CMAKE_SYSTEM_PROCESSOR} not configured")
 endif()
+
 message(STATUS "\tProcessor:\t ${CMAKE_SYSTEM_PROCESSOR}")
 
 # The System
@@ -76,10 +77,12 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "^Darwin")
     set(CMAKE_SYSTEM_NAME "macOS")
     set(SYSTEM.macOS 1)
   endif()
+
   set(SYSTEM.Darwin 1)
 else()
-  message (FATAL_ERROR "System ${CMAKE_SYSTEM_NAME} not configured")
+  message(FATAL_ERROR "System ${CMAKE_SYSTEM_NAME} not configured")
 endif()
+
 message(STATUS "\tSystem:   \t ${CMAKE_SYSTEM_NAME}")
 
 message(STATUS "***************************************")

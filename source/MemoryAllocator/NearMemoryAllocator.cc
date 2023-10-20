@@ -107,6 +107,7 @@ MemBlock *NearMemoryAllocator::allocateNearBlockFromDefaultAllocator(uint32_t si
   return block;
 }
 
+#include <sys/mman.h>
 MemBlock *NearMemoryAllocator::allocateNearBlockFromUnusedRegion(uint32_t size, addr_t pos, size_t search_range,
                                                                  bool executable) {
 
@@ -139,6 +140,15 @@ MemBlock *NearMemoryAllocator::allocateNearBlockFromUnusedRegion(uint32_t size, 
 
     DEBUG_LOG("[near memory allocator] unused memory from unused region %p(%p), within pos: %p, serach_range: %p",
               unused_mem_start, size, pos, search_range);
+
+    void *result = mmap((void *)unused_mem_start, size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (!result || result == MAP_FAILED)
+      return 0;
+    if (result != (void *)unused_mem_start) {
+      munmap(result, size);
+      return 0;
+    }
+    unused_mem_start = (uint64_t)result;
     return unused_mem_start;
   };
 
@@ -159,10 +169,11 @@ MemBlock *NearMemoryAllocator::allocateNearBlockFromUnusedRegion(uint32_t size, 
   auto unused_arena_size = unused_arena_end_page_addr - unused_arena_first_page_addr + OSMemory::PageSize();
   auto unused_arena_addr = unused_arena_first_page_addr;
 
-  if (OSMemory::Allocate(unused_arena_size, kNoAccess, (void *)unused_arena_addr) == nullptr) {
-    ERROR_LOG("[near memory allocator] allocate fixed page failed %p", unused_arena_addr);
-    return nullptr;
-  }
+  // SYSLOG("AutoPatches: Allocate kNoAccess %p %x", (void *)unused_arena_addr, unused_arena_size);
+  // if (OSMemory::Allocate(unused_arena_size, kNoAccess, (void *)unused_arena_addr) == nullptr) {
+  //   ERROR_LOG("[near memory allocator] allocate fixed page failed %p", unused_arena_addr);
+  //   return nullptr;
+  // }
 
   auto register_near_arena = [&](addr_t arena_addr, size_t arena_size) -> MemoryArena * {
     MemoryArena *arena = nullptr;

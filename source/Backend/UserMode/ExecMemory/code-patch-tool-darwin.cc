@@ -74,26 +74,38 @@ PUBLIC int DobbyCodePatch(void *address, uint8_t *buffer, uint32_t buffer_size) 
   int share_mode = 0;
   int is_enable_remap = -1;
   if (is_enable_remap == -1) {
-    auto get_region_info = [&](addr_t region_start) -> void {
-      vm_region_submap_info_64 region_submap_info;
+    auto get_region_info = [&](addr_t region_start) -> bool {
+      vm_region_submap_info_64 region_submap_info = {0};
       mach_msg_type_number_t count = VM_REGION_SUBMAP_INFO_COUNT_64;
       mach_vm_address_t addr = region_start;
       mach_vm_size_t size = 0;
       natural_t depth = 0;
       while (1) {
-        kr = mach_vm_region_recurse(mach_task_self(), (mach_vm_address_t *)&addr, (mach_vm_size_t *)&size, &depth,
-                                    (vm_region_recurse_info_t)&region_submap_info, &count);
+        kr = vm_region_recurse_64(mach_task_self(), (vm_address_t *)&addr, (vm_size_t *)&size, &depth,
+                                  (vm_region_recurse_info_t)&region_submap_info, &count);
+        SYSLOG("AutoPatches: kr=%d,%s deep=%d submap=%d %llx=>%llx,%llx", kr, mach_error_string(kr), depth,
+               region_submap_info.is_submap, addr, region_start, size);
+
+        if (kr != KERN_SUCCESS)
+          return false;
+
         if (region_submap_info.is_submap) {
           depth++;
         } else {
           orig_prot = region_submap_info.protection;
           orig_max_prot = region_submap_info.max_protection;
           share_mode = region_submap_info.share_mode;
-          return;
+          return true;
         }
       }
     };
-    get_region_info(remap_dest_page);
+
+    if (!get_region_info(remap_dest_page)) {
+      return -1;
+    }
+
+    SYSLOG("AutoPatches: [%p,%d] orig_max_prot=%d, orig_prot=%d, share_mode=%d", address, buffer_size, orig_max_prot,
+           orig_prot, share_mode);
     if (orig_max_prot != 5 && share_mode != 2) {
       is_enable_remap = 1;
     } else {
@@ -101,51 +113,53 @@ PUBLIC int DobbyCodePatch(void *address, uint8_t *buffer, uint32_t buffer_size) 
       DEBUG_LOG("code patch %p won't use remap", address);
     }
   }
-  if (is_enable_remap == 1) {
-    addr_t remap_dummy_page = 0;
-    {
-      kr = mach_vm_allocate(self_task, (mach_vm_address_t *)&remap_dummy_page, page_size, VM_FLAGS_ANYWHERE);
-      KERN_RETURN_ERROR(kr, -1);
+  // if (is_enable_remap == 1) {
+  //   addr_t remap_dummy_page = 0;
+  //   {
+  //     kr = mach_vm_allocate(self_task, (mach_vm_address_t *)&remap_dummy_page, page_size, VM_FLAGS_ANYWHERE);
+  //     KERN_RETURN_ERROR(kr, -1);
 
-      memcpy((void *)remap_dummy_page, (void *)patch_page, page_size);
+  //     memcpy((void *)remap_dummy_page, (void *)patch_page, page_size);
 
-      int offset = (int)((addr_t)address - patch_page);
-      memcpy((void *)(remap_dummy_page + offset), buffer, buffer_size);
+  //     int offset = (int)((addr_t)address - patch_page);
+  //     memcpy((void *)(remap_dummy_page + offset), buffer, buffer_size);
 
-      kr = mach_vm_protect(self_task, remap_dummy_page, page_size, false, VM_PROT_READ | VM_PROT_EXECUTE);
-      KERN_RETURN_ERROR(kr, -1);
-    }
+  //     kr = mach_vm_protect(self_task, remap_dummy_page, page_size, false, VM_PROT_READ | VM_PROT_EXECUTE);
+  //     KERN_RETURN_ERROR(kr, -1);
+  //   }
 
-    vm_prot_t prot, max_prot;
-    kr = mach_vm_remap(self_task, (mach_vm_address_t *)&remap_dest_page, page_size, 0,
-                       VM_FLAGS_OVERWRITE | VM_FLAGS_FIXED, self_task, remap_dummy_page, true, &prot, &max_prot,
-                       VM_INHERIT_COPY);
-    KERN_RETURN_ERROR(kr, -1);
+  //   vm_prot_t prot, max_prot;
+  //   kr = mach_vm_remap(self_task, (mach_vm_address_t *)&remap_dest_page, page_size, 0,
+  //                      VM_FLAGS_OVERWRITE | VM_FLAGS_FIXED, self_task, remap_dummy_page, true, &prot, &max_prot,
+  //                      VM_INHERIT_COPY);
+  //   KERN_RETURN_ERROR(kr, -1);
 
-    kr = mach_vm_deallocate(self_task, remap_dummy_page, page_size);
-    KERN_RETURN_ERROR(kr, -1);
-  } else {
+  //   kr = mach_vm_deallocate(self_task, remap_dummy_page, page_size);
+  //   KERN_RETURN_ERROR(kr, -1);
+  // }
+  // else
+  {
 
-    if (0) {
-      {
-        auto kr = mach_vm_allocate(self_task, &remap_dummy_page, page_size, VM_FLAGS_ANYWHERE);
-        KERN_RETURN_ERROR(kr, -1);
+    // if (0) {
+    //   {
+    //     auto kr = mach_vm_allocate(self_task, &remap_dummy_page, page_size, VM_FLAGS_ANYWHERE);
+    //     KERN_RETURN_ERROR(kr, -1);
 
-        kr = mach_vm_deallocate(self_task, remap_dummy_page, page_size);
-        KERN_RETURN_ERROR(kr, -1);
-      }
+    //     kr = mach_vm_deallocate(self_task, remap_dummy_page, page_size);
+    //     KERN_RETURN_ERROR(kr, -1);
+    //   }
 
-      vm_prot_t prot, max_prot;
-      kr = mach_vm_remap(self_task, &remap_dummy_page, page_size, 0, VM_FLAGS_ANYWHERE, self_task, remap_dest_page,
-                         false, &prot, &max_prot, VM_INHERIT_SHARE);
-      KERN_RETURN_ERROR(kr, -1);
+    //   vm_prot_t prot, max_prot;
+    //   kr = mach_vm_remap(self_task, &remap_dummy_page, page_size, 0, VM_FLAGS_ANYWHERE, self_task, remap_dest_page,
+    //                      false, &prot, &max_prot, VM_INHERIT_SHARE);
+    //   KERN_RETURN_ERROR(kr, -1);
 
-      kr = mach_vm_protect(self_task, remap_dummy_page, page_size, false, VM_PROT_READ | VM_PROT_WRITE);
-      // the kr always return KERN_PROTECTION_FAILURE
-      kr = KERN_PROTECTION_FAILURE;
+    //   kr = mach_vm_protect(self_task, remap_dummy_page, page_size, false, VM_PROT_READ | VM_PROT_WRITE);
+    //   // the kr always return KERN_PROTECTION_FAILURE
+    //   kr = KERN_PROTECTION_FAILURE;
 
-      memcpy((void *)(remap_dummy_page + ((uint64_t)address - remap_dest_page)), buffer, buffer_size);
-    }
+    //   memcpy((void *)(remap_dummy_page + ((uint64_t)address - remap_dest_page)), buffer, buffer_size);
+    // }
 
     static __typeof(vm_protect) *vm_protect_impl = nullptr;
     if (vm_protect_impl == nullptr) {

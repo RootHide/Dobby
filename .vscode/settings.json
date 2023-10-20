@@ -113,7 +113,8 @@
     "cinttypes": "cpp",
     "shared_cache_internal.h": "c",
     "coroutine": "cpp",
-    "__bits": "cpp"
+    "__bits": "cpp",
+    "syslog.h": "c"
   },
   "C_Cpp.configurationWarnings": "Disabled",
   "lldb.showDisassembly": "auto",

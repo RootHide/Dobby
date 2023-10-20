@@ -24,7 +24,7 @@ option(FullFloatingPointRegisterPack "Save and pack all floating-point registers
 
 option(Plugin.SymbolResolver "Enable symbol resolver" ON)
 
-option(Plugin.ImportTableReplace "Enable import table replace " OFF)
+option(Plugin.ImportTableReplace "Enable import table replace " ON)
 
 option(Plugin.Android.BionicLinkerUtil "Enable android bionic linker util" OFF)
 
@@ -89,6 +89,8 @@ include_directories(
 
   ./builtin-plugin
 )
+
+add_subdirectory(./builtin-plugin)
 
 if (SYSTEM.Darwin AND DOBBY_BUILD_KERNEL_MODE)
   include_directories(
@@ -285,6 +287,11 @@ if (Plugin.SymbolResolver)
     ${symbol_resolver.SOURCE_FILE_LIST}
     )
 endif ()
+
+if (Plugin.ImportTableReplace)
+  set(dobby.SOURCE_FILE_LIST ${dobby.SOURCE_FILE_LIST} builtin-plugin/ImportTableReplace/dobby_import_replace.cc)
+endif ()
+
 
 # ---
 
